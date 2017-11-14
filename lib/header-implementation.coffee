@@ -12,7 +12,7 @@ module.exports =
     @subscriptions.add atom.commands.add 'atom-workspace', 'header-implementation:generate': => @generate()
 
     # RegEx Patterns
-    @CLASS_NAME_PATTERN = /(?:namescape|class)\s+(\w+)/
+    @CLASS_NAME_PATTERN = /(?:namespace|class)\s+(\w+)/
     @METHOD_PATTERN = /^\s*((?:const|static|virtual|volatile|friend){0,5}\s*\w+(?::{2}\w+){0,}\s*\**&?)?\s+([\w~]+)\s*(\(.*\))\s*?( const)?;/gm
 
   findName: (work) ->
