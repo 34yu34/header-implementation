@@ -12,12 +12,13 @@ module.exports =
     @subscriptions.add atom.commands.add 'atom-workspace', 'header-implementation:generate': => @generate()
 
     # RegEx Patterns
-    @CLASS_NAME_PATTERN = /(?:namespace|class)\s+(\w+)/
+    @CLASS_NAME_PATTERN = /((?:namespace|class))+\s+([\w_]+)+\s*{/
     @METHOD_PATTERN = /^\s*((?:const|static|virtual|volatile|friend){0,5}\s*\w+(?::{2}\w+){0,}\s*\**&?)?\s+([\w~]+)\s*(\(.*\))\s*?( const)?;/gm
 
   findName: (work) ->
     work.buffer.scan @CLASS_NAME_PATTERN, (res) ->
-      work.classname = res.match[1]
+      work.namespace = res.match[1] == "namespace"
+      work.classname = res.match[2]
     work.editor.moveToEndOfLine()
 
   findMethod: (work) ->
@@ -39,23 +40,44 @@ module.exports =
     work.editor.insertNewline()
     work.editor.insertNewline()
     work.editor.insertNewline()
-
-  createMethods: (work) ->
-    work.methods.forEach (method) ->
-      work.editor.insertText("/*" + "*".repeat(68))
-      work.editor.insertNewline()
-      work.editor.insertText("* Comment")
-      work.editor.insertNewline()
-      work.editor.insertText( "*".repeat(68)+ "*/")
-      work.editor.insertNewline()
-      if (method[0])
-        work.editor.insertText("#{method[0]} ")
-      work.editor.insertText("#{work.classname}::#{method[1]}" )
+    if (work.namespace)
+      work.editor.insertText("namespace #{work.classname}")
       work.editor.insertNewline()
       work.editor.insertText("{")
       work.editor.insertNewline()
-      work.editor.moveDown(1)
-      work.editor.insertNewline()
+
+  methodComment: (work) ->
+    work.editor.insertText("/*" + "*".repeat(68))
+    work.editor.insertNewline()
+    work.editor.insertText("* Comment")
+    work.editor.insertNewline()
+    work.editor.insertText( "*".repeat(68)+ "*/")
+    work.editor.insertNewline()
+
+  methodName: (work,method) ->
+    if (method[0])
+      work.editor.insertText("#{method[0]} ")
+    if (work.namespace)
+      work.editor.insertText("#{method[1]}" )
+    else
+      work.editor.insertText("#{work.classname}::#{method[1]}")
+    work.editor.insertNewline()
+
+  methodBody: (work) ->
+    work.editor.insertText("{")
+    work.editor.insertNewline()
+    work.editor.moveDown(1)
+    work.editor.insertNewline()
+
+  addMethod: (work,method,ctx) ->
+    ctx.methodComment(work)
+    ctx.methodName(work,method)
+    ctx.methodBody(work)
+
+  createMethods: (work) ->
+    ctx = this
+    work.methods.forEach (method) ->
+      ctx.addMethod(work,method,ctx)
 
   writeInEditor: (work) ->
     @createHead(work)
@@ -74,6 +96,7 @@ module.exports =
         headerPath,
         implementationPath,
         classname : ""
+        namespace : false
         methods : []
       }
     work.editor.save()
