@@ -6,7 +6,8 @@
   "keywords": [
   ],
   "activationCommands": {
-    "atom-workspace": "header-implementation:generate"
+    "atom-workspace": "header-implementation:generate",
+    "atom-workspace": "header-implementation:add"
   },
   "repository": "https://github.com/atom/header-implementation",
   "license": "MIT",

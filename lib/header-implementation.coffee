@@ -7,6 +7,7 @@ module.exports =
     @subscriptions = new CompositeDisposable
     # Register command that toggles this view
     @subscriptions.add atom.commands.add 'atom-workspace', 'header-implementation:generate': => @generate()
+    @subscriptions.add atom.commands.add 'atom-workspace', 'header-implementation:add': => @add()
     # RegEx Patterns
     @CLASS_NAME_PATTERN = /((?:namespace|class))+\s+([\w_]+)+\s*{/g
     @METHOD_PATTERN = /^\s*((?:const|static|virtual|volatile|friend){0,5}\s*\w+(?::{2}\w+){0,}\s*\**&?)?\s+([\w~]+)\s*(\(.*\))\s*?( const)?;/gm
@@ -22,9 +23,10 @@ module.exports =
     atom.workspace.scan @FILE_NAME_PATTERN, (file) ->
       if (file.filePath.includes("#{work.classname}.h"))
         work.headerPath = file.filePath
+        console.log(work.headerPath)
       if (file.filePath.includes("#{work.classname}.cpp"))
         work.implementationPath = file.filePath
-
+        console.log(work.implementationPath)
   ######################################################################
   #	Find wether it is a namespace or a classe and add its name to work
   ######################################################################
@@ -34,20 +36,26 @@ module.exports =
       work.classname = res.match[2]
     work.editor.moveToEndOfLine()
   ######################################################################
-  #	find all the methods in the headers file
+  #	Find all the methods that match the pattern and add them
   ######################################################################
-  findMethod: (work) ->
+  findAllMethods: (work) ->
+    ctx = this
     work.buffer.scan @METHOD_PATTERN, (res) ->
-      method = []
-      method.push((res.match[1]||"").replace("static ", "").replace(/\s{2,}/, " ") || "")
-      method.push(res.match[2] + res.match[3] + (res.match[4]||""))
-      work.methods.push(method)
+      ctx.addMethod(work,res)
+  ######################################################################
+  #	add a method to the workspace from a regex match
+  ######################################################################
+  addMethod: (work,res) ->
+    method = []
+    method.push((res.match[1]||"").replace("static ", "").replace(/\s{2,}/, " ") || "")
+    method.push(res.match[2] + res.match[3] + (res.match[4]||""))
+    work.methods.push(method)
   ######################################################################
   #	Find both name and methods
   ######################################################################
   readFile: (work) ->
     @findName(work)
-    @findMethod(work)
+    @findAllMethods(work)
   ######################################################################
   #	Return a promise toward a new .cpp file open
   ######################################################################
@@ -99,23 +107,23 @@ module.exports =
   ######################################################################
   #	Add a method at the cursor position
   ######################################################################
-  addMethod: (work,method) ->
+  writeMethod: (work,method) ->
     @methodComment(work)
     @methodName(work,method)
     @methodBody(work)
   ######################################################################
   #	Create all the methods back to back
   ######################################################################
-  createMethods: (work) ->
+  writeAllMethods: (work) ->
     ctx = this
     work.methods.forEach (method) ->
-      ctx.addMethod(work,method,ctx)
+      ctx.writeMethod(work,method,ctx)
   ######################################################################
   #	Write the whole file .cpp
   ######################################################################
   writeInEditor: (work) ->
     @createHead(work)
-    @createMethods(work)
+    @writeAllMethods(work)
   ######################################################################
   #	generate a work object
   ######################################################################
@@ -141,7 +149,6 @@ module.exports =
     work = @generateWork()
     work.editor.save()
     @readFile(work)
-    @findPath(work)
     work.headerPath = work.editor.getPath()
     work.implementationPath = work.headerPath.replace(".h",".cpp")
     ctx = this
@@ -149,4 +156,26 @@ module.exports =
       work.editor = editor
       work.buffer = work.editor.getBuffer()
       ctx.writeInEditor(work)
+    return
+
+  add: ->
+    work = @generateWork()
+    work.editor.save
+    @findName(work)
+    @findPath(work)
+    console.log(work.implementationPath)
+    console.log(work.headerPath)
+    work.editor.moveToBeginningOfLine()
+    work.editor.selectToEndOfLine()
+    range = work.editor.getSelectedBufferRange()
+    ctx = this
+    work.editor.scanInBufferRange @METHOD_PATTERN, range, (res) ->
+      ctx.addMethod(work,res)
+      if (work.method == [])
+        return
+    @createFile(work).then (editor) ->
+      work.editor = editor
+      work.buffer = work.editor.getBuffer()
+      work.editor.moveToBottom()
+      ctx.writeMethod(work,work.methods[0])
     return
