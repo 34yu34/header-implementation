@@ -13,9 +13,12 @@ module.exports =
     @FILE_NAME_PATTERN = /([\w]+)\.([h|cpp]+)/
 
   ######################################################################
-  #
+  # Find the Parh of the source file and the headers file
+  # return empty if nothing is found
   ######################################################################
   findPath: (work) ->
+    work.headerPath = ""
+    work.implementationPath = ""
     atom.workspace.scan @FILE_NAME_PATTERN, (file) ->
       if (file.filePath.includes("#{work.classname}.h"))
         work.headerPath = file.filePath
