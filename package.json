@@ -1,18 +1,23 @@
 {
   "name": "header-implementation",
   "main": "./lib/header-implementation",
-  "version": "0.0.0",
-  "description": "Creates the .cpp out of a .h",
+  "version": "0.1.1",
+  "description": "Creates a stub implementation of a .h file",
   "keywords": [
+    "cpp",
+    "header",
+    "implement",
+    "method",
+    "function",
+    "class"
   ],
   "activationCommands": {
     "atom-workspace": "header-implementation:generate"
   },
-  "repository": "https://github.com/atom/header-implementation",
+  "repository": "https://github.com/34yu34/header-implementation",
   "license": "MIT",
   "engines": {
     "atom": ">=1.0.0 <2.0.0"
   },
-  "dependencies": {
-  }
+  "dependencies": {}
 }
