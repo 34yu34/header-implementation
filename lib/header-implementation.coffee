@@ -10,10 +10,10 @@ module.exports =
 
     # Register command that toggles this view
     @subscriptions.add atom.commands.add 'atom-workspace', 'header-implementation:generate': => @generate()
-    @METHOD_PATTERN = /^\s*((?:const|static|virtual|volatile|friend){0,5}\s*[\w_]+(?::{2}[\w_]+){0,}\s*\**&?)?\s+([\w~_]+)\s*(\(.*\))\s*?( const)?/gm
 
     # RegEx Patterns
     @CLASS_NAME_PATTERN = /(?:namescape|class)\s+([\w_]+)/
+    @METHOD_PATTERN = /^\s*((?:const|static|virtual|volatile|friend){0,5}\s*[\w_]+(?::{2}[\w_]+){0,}\s*\**&?)?\s+([\w~_]+)\s*(\(.*\))\s*?( const)?;/gm
 
   findName: (work) ->
     work.buffer.scan @CLASS_NAME_PATTERN, (res) ->
