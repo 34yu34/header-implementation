@@ -13,20 +13,20 @@ module.exports =
     @METHOD_PATTERN = /^\s*((?:const|static|virtual|volatile|friend){0,5}\s*[\w_]+(?::{2}[\w_]+){0,}\s*\**&?)?\s+([\w~_]+)\s*(\(.*\))\s*?( const)?/gm
 
   findName: (work) ->
-    work.buffer.scan new RegExp("namespace"), (res) ->
+    work.buffer.scan new RegExp("namespace|class"), (res) ->
       work.editor.setCursorBufferPosition(res.range.end)
       work.editor.moveRight(1)
       work.editor.moveToEndOfWord()
       work.editor.moveToBeginningOfWord()
       work.editor.selectToEndOfWord()
-      work.classname = editor.getSelectedText()
+      work.classname = work.editor.getSelectedText()
       res.stop()
     work.editor.moveToEndOfLine()
 
   findMethod: (work) ->
     work.buffer.scan @METHOD_PATTERN, (res) ->
       method = []
-      method.push(res.match[1].replace("static ", "").replace(/\s{2,}/, " ") || "")
+      method.push((res.match[1]||"").replace("static ", "").replace(/\s{2,}/, " ") || "")
       method.push(res.match[2] + res.match[3] + (res.match[4]||""))
       work.methods.push(method)
 
