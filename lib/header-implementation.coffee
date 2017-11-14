@@ -12,15 +12,12 @@ module.exports =
     @subscriptions.add atom.commands.add 'atom-workspace', 'header-implementation:generate': => @generate()
     @METHOD_PATTERN = /^\s*((?:const|static|virtual|volatile|friend){0,5}\s*[\w_]+(?::{2}[\w_]+){0,}\s*\**&?)?\s+([\w~_]+)\s*(\(.*\))\s*?( const)?/gm
 
+    # RegEx Patterns
+    @CLASS_NAME_PATTERN = /(?:namescape|class)\s+([\w_]+)/
+
   findName: (work) ->
-    work.buffer.scan new RegExp("namespace|class"), (res) ->
-      work.editor.setCursorBufferPosition(res.range.end)
-      work.editor.moveRight(1)
-      work.editor.moveToEndOfWord()
-      work.editor.moveToBeginningOfWord()
-      work.editor.selectToEndOfWord()
-      work.classname = work.editor.getSelectedText()
-      res.stop()
+    work.buffer.scan @CLASS_NAME_PATTERN, (res) ->
+      work.classname = res.match[1]
     work.editor.moveToEndOfLine()
 
   findMethod: (work) ->
