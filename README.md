@@ -1,5 +1,9 @@
 # header-implementation package
 
-A short description of your package.
+Header-Implementation is a package for [Atom](https://atom.io/) that allows you
+to generate a stub C++ implementation of a C++ header file.
 
-![A screenshot of your package](https://f.cloud.github.com/assets/69169/2290250/c35d867a-a017-11e3-86be-cd7c5bf3ff9b.gif)
+![animated screenshot](https://raw.githubusercontent.com/34yu34/header-implementation/master/resources/header-implementation.gif)
+
+To generate a `.cpp` template, just open the `.h` into the editor
+use the keyboard shortcut <kbd>ctrl</kbd>+<kbd>alt</kbd>+<kbd>o</kbd>.
