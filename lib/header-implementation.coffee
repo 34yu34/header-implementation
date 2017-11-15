@@ -6,8 +6,9 @@ module.exports =
     # Events subscribed to in atom's system can be easily cleaned up with a CompositeDisposable
     @subscriptions = new CompositeDisposable
     # Register command that toggles this view
-    @subscriptions.add atom.commands.add 'atom-workspace', 'header-implementation:generate': => @generate()
-    @subscriptions.add atom.commands.add 'atom-workspace', 'header-implementation:add': => @add()
+    @subscriptions.add atom.commands.add 'atom-workspace',
+      'header-implementation:generate': => @generate()
+      'header-implementation:add': => @add()
     # RegEx Patterns
     @FILE_NAMESPACE_END_PATTERN = /}\s+}/
     @FILE_NAME_PATTERN = /([\w]+)\.([h|cpp]+)/
