@@ -55,13 +55,11 @@ module.exports =
   findPath: (work) ->
     work.headerPath = ""
     work.implementationPath = ""
-    atom.workspace.scan @FILE_NAME_PATTERN, (file) ->
+    return atom.workspace.scan @FILE_NAME_PATTERN, (file) ->
       if (file.filePath.includes("#{work.classname}.h"))
         work.headerPath = file.filePath
-        console.log(work.headerPath)
       if (file.filePath.includes("#{work.classname}.cpp"))
         work.implementationPath = file.filePath
-        console.log(work.implementationPath)
   ######################################################################
   #	Find wether it is a namespace or a classe and add its name to work
   ######################################################################
@@ -197,20 +195,21 @@ module.exports =
     work = @generateWork()
     work.editor.save
     @findName(work)
-    @findPath(work)
-    console.log(work.implementationPath)
-    console.log(work.headerPath)
-    work.editor.moveToBeginningOfLine()
-    work.editor.selectToEndOfLine()
-    range = work.editor.getSelectedBufferRange()
     ctx = this
-    work.editor.scanInBufferRange @METHOD_PATTERN, range, (res) ->
-      ctx.addMethod(work,res)
-      if (work.method == [])
-        return
-    @createFile(work).then (editor) ->
-      work.editor = editor
-      work.buffer = work.editor.getBuffer()
-      work.editor.moveToBottom()
-      ctx.writeMethod(work,work.methods[0])
+    @findPath(work).then ->
+      console.log(work)
+      console.log(work.implementationPath)
+      work.editor.moveToBeginningOfLine()
+      work.editor.selectToEndOfLine()
+      range = work.editor.getSelectedBufferRange()
+      work.editor.scanInBufferRange ctx.METHOD_PATTERN, range, (res) ->
+        ctx.addMethod(work,res)
+        console.log(work.methods)
+        if (work.method == [])
+          return
+      ctx.createFile(work).then (editor) ->
+        work.editor = editor
+        work.buffer = work.editor.getBuffer()
+        work.editor.moveToBottom()
+        ctx.writeMethod(work,work.methods[0])
     return
