@@ -13,7 +13,42 @@ module.exports =
 
     # RegEx Patterns
     @CLASS_NAME_PATTERN = /(?:namescape|class)\s+(\w+)/
-    @METHOD_PATTERN = /^\s*((?:const|static|virtual|volatile|friend){0,5}\s*\w+(?::{2}\w+){0,}\s*\**&?)?\s+([\w~]+)\s*(\(.*\))\s*?( const)?;/gm
+    @METHOD_PATTERN = ///
+    ^
+    \s*
+    (
+      (?:
+        (?:\s*const\s*)|
+        (?:\s*static\s*)|
+        (?:\s*virtual\s*)|
+        (?:\s*volatile\s*)|
+        (?:\s*friend\s*)
+      ){0,5}
+      \s*
+      \w+
+      (?:
+        :{2}
+        \w+
+      )*
+      (?:
+        \s*?
+        [&*]
+        \s*?
+      )*
+    )??
+    \s*
+    ([\w~]+)
+    \s*
+    (
+      \(
+      .*
+      \)
+    )
+    \s*?
+    (\sconst)?
+    \s*
+    ;
+    ///gm
 
   findName: (work) ->
     work.buffer.scan @CLASS_NAME_PATTERN, (res) ->
