@@ -9,6 +9,7 @@ module.exports =
     @subscriptions.add atom.commands.add 'atom-workspace', 'header-implementation:generate': => @generate()
     @subscriptions.add atom.commands.add 'atom-workspace', 'header-implementation:add': => @add()
     # RegEx Patterns
+    @FILE_NAMESPACE_END_PATTERN = /}\s+}/
     @FILE_NAME_PATTERN = /([\w]+)\.([h|cpp]+)/
     @CLASS_NAME_PATTERN = /(namespace|class)\s+(\w+)\s*{/g
     @METHOD_PATTERN = ///
@@ -63,18 +64,28 @@ module.exports =
   ######################################################################
   #	Find wether it is a namespace or a classe and add its name to work
   ######################################################################
-  findName: (work) ->
+  findClassName: (work) ->
     work.buffer.scan @CLASS_NAME_PATTERN, (res) ->
       work.namespace = res.match[1] == "namespace"
       work.classname = res.match[2]
     work.editor.moveToEndOfLine()
   ######################################################################
   #	Find all the methods that match the pattern and add them
+  # Add the methods to work object
   ######################################################################
   findAllMethods: (work) ->
     ctx = this
     work.buffer.scan @METHOD_PATTERN, (res) ->
       ctx.addMethod(work,res)
+  ######################################################################
+  #	Find all the methods within the given range
+  # Add the methods to work object
+  ######################################################################
+  findMethodInRange: (work,range) ->
+    ctx = this
+    work.editor.scanInBufferRange @METHOD_PATTERN, range, (res) ->
+      ctx.addMethod(work,res)
+
   ######################################################################
   #	add a method to the workspace from a regex match
   ######################################################################
@@ -87,7 +98,7 @@ module.exports =
   #	Find both name and methods
   ######################################################################
   readFile: (work) ->
-    @findName(work)
+    @findClassName(work)
     @findAllMethods(work)
   ######################################################################
   #	Return a promise toward a new .cpp file open
@@ -98,7 +109,7 @@ module.exports =
   # Write the head of a .cpp file depending on if
   # it's a namespace or a class
   ######################################################################
-  createHead: (work) ->
+  createHeadOfCpp: (work) ->
     work.editor.insertText("#include \"#{work.classname}.h\"")
     work.editor.insertNewline()
     work.editor.insertNewline()
@@ -154,9 +165,21 @@ module.exports =
   ######################################################################
   #	Write the whole file .cpp
   ######################################################################
-  writeInEditor: (work) ->
-    @createHead(work)
+  writeNewCpp: (work) ->
+    @createHeadOfCpp(work)
     @writeAllMethods(work)
+  ######################################################################
+  #
+  ######################################################################
+  moveCursorToAppend: (work) ->
+    if (work.namespace)
+      work.buffer.backwardsScan @FILE_NAMESPACE_END_PATTERN, (res) ->
+        work.editor.setCursorBufferPosition(res.range.start)
+        work.editor.moveRight(1)
+        work.editor.insertNewline()
+        res.stop()
+    else
+      work.editor.moveToBottom()
   ######################################################################
   #	generate a work object
   ######################################################################
@@ -174,6 +197,19 @@ module.exports =
         methods : []
       }
     return work
+  changeEditor: (work,editor) ->
+    work.editor = editor
+    work.buffer = work.editor.getBuffer()
+  ######################################################################
+  #	Return the range of the line in buffer coord
+  ######################################################################
+  lineRange: (work) ->
+    position = work.editor.getCursorScreenPosition()
+    work.editor.moveToBeginningOfLine()
+    work.editor.selectToEndOfLine()
+    range = work.editor.getSelectedBufferRange()
+    work.editor.setCursorScreenPosition(position)
+    return range
   ######################################################################
   #	Read the header files you are in and generate a .cpp
   # in the same path
@@ -186,30 +222,23 @@ module.exports =
     work.implementationPath = work.headerPath.replace(".h",".cpp")
     ctx = this
     @createFile(work).then (editor) ->
-      work.editor = editor
-      work.buffer = work.editor.getBuffer()
-      ctx.writeInEditor(work)
+      ctx.changeEditor(work,editor)
+      ctx.writeNewCpp(work)
     return
 
   add: ->
     work = @generateWork()
     work.editor.save
-    @findName(work)
+    @findClassName(work)
     ctx = this
     @findPath(work).then ->
-      console.log(work)
-      console.log(work.implementationPath)
-      work.editor.moveToBeginningOfLine()
-      work.editor.selectToEndOfLine()
-      range = work.editor.getSelectedBufferRange()
-      work.editor.scanInBufferRange ctx.METHOD_PATTERN, range, (res) ->
-        ctx.addMethod(work,res)
-        console.log(work.methods)
-        if (work.method == [])
-          return
+      range = ctx.lineRange(work)
+      console.log(range)
+      ctx.findMethodInRange(work,range)
+      unless work.methods.length
+        return
       ctx.createFile(work).then (editor) ->
-        work.editor = editor
-        work.buffer = work.editor.getBuffer()
-        work.editor.moveToBottom()
+        ctx.changeEditor(work,editor)
+        ctx.moveCursorToAppend(work)
         ctx.writeMethod(work,work.methods[0])
     return
