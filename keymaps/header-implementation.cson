@@ -10,3 +10,4 @@
 'atom-workspace':
   'ctrl-alt-o': 'header-implementation:generate'
   'ctrl-alt-p': 'header-implementation:add'
+  'ctrl-alt-i': 'header-implementation:update'

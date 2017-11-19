@@ -9,10 +9,15 @@ module.exports =
     @subscriptions.add atom.commands.add 'atom-workspace',
       'header-implementation:generate': => @generate()
       'header-implementation:add': => @add()
+      'header-implementation:update': => @update()
     # RegEx Patterns
-    @FILE_NAMESPACE_END_PATTERN = /}\s+}/
+    @HEADER = 0;
+    @IMPLEMENTATION = 1;
+    @FILE_NAMESPACE_END_PATTERN = /}\s*}/
     @FILE_NAME_PATTERN = /([\w]+)\.([h|cpp]+)/
     @CLASS_NAME_PATTERN = /(namespace|class)\s+(\w+)\s*{/g
+    @METHOD_CPP_PATTERN = /^\s*?((?:virtual\s+|const\s+|friend\s+|volatile){0,3}\s*(?:\w+\s*::\s*)?\s*[\w]*?)\s*\w+\s*::\s*(~?[\w]+)\s*(\(.*\))\s*(const)?\s*[{|:]/gm
+    @METHOD_NAMESPACE_PATTERN = /^\s*((?:const\s+|virtual\s+|friend\s+|volatile\s+){0,4}\s*?(?:\w+\s*::)?\s*[\w]+)\s+(\w+)\s*(\([\s\S]*?\))\s*(const)?\s*{/gm
     @METHOD_PATTERN = ///
     ^
     \s*
@@ -51,17 +56,28 @@ module.exports =
     ///gm
 
   ######################################################################
-  # Find the Parh of the source file and the headers file
+  # Find the Path of the source file from the headers file
+  # open in the text editor
   # return empty if nothing is found
   ######################################################################
   findPath: (work) ->
+    path = work.editor.getPath()
     work.headerPath = ""
     work.implementationPath = ""
+    if path.match(/\.h$/)
+      work.headerPath = path
+      fileName = work.editor.getTitle().replace(".h",".cpp")
+    else if path.match(/\.cpp$/)
+      work.implementationPath = path
+      fileName = work.editor.getTitle().replace(".cpp",".h")
+    else
+      return
     return atom.workspace.scan @FILE_NAME_PATTERN, (file) ->
-      if (file.filePath.includes("#{work.classname}.h"))
-        work.headerPath = file.filePath
-      if (file.filePath.includes("#{work.classname}.cpp"))
-        work.implementationPath = file.filePath
+      if (file.filePath.includes(fileName))
+        if work.headerPath == ""
+          work.headerPath = file.filePath
+        else if work.implementationPath == ""
+          work.implementationPath = file.filePath
   ######################################################################
   #	Find wether it is a namespace or a classe and add its name to work
   ######################################################################
@@ -72,40 +88,82 @@ module.exports =
     work.editor.moveToEndOfLine()
   ######################################################################
   #	Find all the methods that match the pattern and add them
-  # Add the methods to work object
+  # Add the method to headersMethods in the work object
   ######################################################################
-  findAllMethods: (work) ->
+  findAllHeaderMethods: (work) ->
     ctx = this
     work.buffer.scan @METHOD_PATTERN, (res) ->
-      ctx.addMethod(work,res)
+      ctx.addHeaderMethod(work,res)
+  ######################################################################
+  #
+  ######################################################################
+  findAllCppMethods: (work) ->
+    ctx = this
+    if (work.namespace)
+      work.buffer.scan @METHOD_NAMESPACE_PATTERN, (res) ->
+        ctx.addCppMethod(work,res)
+    else
+      work.buffer.scan @METHOD_CPP_PATTERN, (res) ->
+        ctx.addCppMethod(work,res)
   ######################################################################
   #	Find all the methods within the given range
-  # Add the methods to work object
+  # Add the methods to headersMethods in the work object
   ######################################################################
   findMethodInRange: (work,range) ->
     ctx = this
     work.editor.scanInBufferRange @METHOD_PATTERN, range, (res) ->
-      ctx.addMethod(work,res)
-
+      ctx.addHeaderMethod(work,res)
   ######################################################################
-  #	add a method to the workspace from a regex match
+  # Create a method and return it
   ######################################################################
-  addMethod: (work,res) ->
+  createMethod: (work,res) ->
     method = []
     method.push((res.match[1]||"").replace("static ", "").replace(/\s{2,}/, " ") || "")
     method.push(res.match[2] + res.match[3] + (res.match[4]||""))
-    work.methods.push(method)
+    return method
   ######################################################################
-  #	Find both name and methods
+  # add a method to the cpp methods
   ######################################################################
-  readFile: (work) ->
+  addCppMethod: (work,res) ->
+    method = @createMethod(work,res)
+    work.cppMethods.push(method)
+  ######################################################################
+  #	add a method to the workspace from a regex match
+  ######################################################################
+  addHeaderMethod: (work,res) ->
+    method = @createMethod(work,res)
+    work.headersMethods.push(method)
+  ######################################################################
+  # Compare all cpp method to .h and remove all the duplicates from th .h
+  ######################################################################
+  compareMethods: (work) ->
+    ctx = this
+    methods =[]
+    work.headersMethods.forEach (hmethod) ->
+      is_there = false
+      work.cppMethods.forEach (cmethod) ->
+        method1 = cmethod[1].replace(/\s*/,"")
+        method2 = hmethod[1].replace(/\s*/,"")
+        console.log(method1+"\n"+method2)
+        if (method1 == method2)
+          is_there = true
+      if (!is_there)
+        methods.push(hmethod)
+    work.headersMethods = methods
+  ######################################################################
+  #	Find both name and methods form the headers
+  ######################################################################
+  readHeadersFile: (work) ->
     @findClassName(work)
-    @findAllMethods(work)
+    @findAllHeaderMethods(work)
   ######################################################################
   #	Return a promise toward a new .cpp file open
   ######################################################################
-  createFile: (work) ->
-    return atom.workspace.open(work.implementationPath)
+  openFile: (work,type) ->
+    if (type == @IMPLEMENTATION)
+      return atom.workspace.open(work.implementationPath)
+    if (type == @HEADER)
+      return atom.workspace.open(work.headerPath)
   ######################################################################
   # Write the head of a .cpp file depending on if
   # it's a namespace or a class
@@ -161,7 +219,7 @@ module.exports =
   ######################################################################
   writeAllMethods: (work) ->
     ctx = this
-    work.methods.forEach (method) ->
+    work.headersMethods.forEach (method) ->
       ctx.writeMethod(work,method,ctx)
   ######################################################################
   #	Write the whole file .cpp
@@ -170,7 +228,7 @@ module.exports =
     @createHeadOfCpp(work)
     @writeAllMethods(work)
   ######################################################################
-  #
+  # move the cursor at the end of the doc to the append position
   ######################################################################
   moveCursorToAppend: (work) ->
     if (work.namespace)
@@ -195,7 +253,8 @@ module.exports =
         implementationPath : ""
         classname : ""
         namespace : false
-        methods : []
+        headersMethods : []
+        cppMethods : []
       }
     return work
   changeEditor: (work,editor) ->
@@ -218,11 +277,11 @@ module.exports =
   generate: ->
     work = @generateWork()
     work.editor.save()
-    @readFile(work)
+    @readHeadersFile(work)
     work.headerPath = work.editor.getPath()
     work.implementationPath = work.headerPath.replace(".h",".cpp")
     ctx = this
-    @createFile(work).then (editor) ->
+    @openFile(work, @IMPLEMENTATION).then (editor) ->
       ctx.changeEditor(work,editor)
       ctx.writeNewCpp(work)
     return
@@ -236,10 +295,24 @@ module.exports =
       range = ctx.lineRange(work)
       console.log(range)
       ctx.findMethodInRange(work,range)
-      unless work.methods.length
+      unless work.headersMethods.length
         return
-      ctx.createFile(work).then (editor) ->
+      ctx.openFile(work, ctx.IMPLEMENTATION).then (editor) ->
         ctx.changeEditor(work,editor)
         ctx.moveCursorToAppend(work)
-        ctx.writeMethod(work,work.methods[0])
+        ctx.writeMethod(work,work.headersMethods[0])
+    return
+
+  update: ->
+    work = @generateWork()
+    work.editor.save
+    ctx = this
+    @readHeadersFile(work)
+    @findPath(work).then ->
+      ctx.openFile(work,ctx.IMPLEMENTATION).then (editor) ->
+        ctx.changeEditor(work,editor)
+        ctx.findAllCppMethods(work)
+        ctx.compareMethods(work)
+        ctx.moveCursorToAppend(work)
+        ctx.writeAllMethods(work)
     return
