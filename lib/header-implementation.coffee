@@ -79,7 +79,7 @@ module.exports =
         else if work.implementationPath == ""
           work.implementationPath = file.filePath
   ######################################################################
-  #	Find wether it is a namespace or a classe and add its name to work
+  # Find wether it is a namespace or a classe and add its name to work
   ######################################################################
   findClassName: (work) ->
     work.buffer.scan @CLASS_NAME_PATTERN, (res) ->
@@ -87,7 +87,7 @@ module.exports =
       work.classname = res.match[2]
     work.editor.moveToEndOfLine()
   ######################################################################
-  #	Find all the methods that match the pattern and add them
+  # Find all the methods that match the pattern and add them
   # Add the method to headersMethods in the work object
   ######################################################################
   findAllHeaderMethods: (work) ->
@@ -106,7 +106,7 @@ module.exports =
       work.buffer.scan @METHOD_CPP_PATTERN, (res) ->
         ctx.addCppMethod(work,res)
   ######################################################################
-  #	Find all the methods within the given range
+  # Find all the methods within the given range
   # Add the methods to headersMethods in the work object
   ######################################################################
   findMethodInRange: (work,range) ->
@@ -128,7 +128,7 @@ module.exports =
     method = @createMethod(work,res)
     work.cppMethods.push(method)
   ######################################################################
-  #	add a method to the workspace from a regex match
+  # add a method to the workspace from a regex match
   ######################################################################
   addHeaderMethod: (work,res) ->
     method = @createMethod(work,res)
@@ -151,13 +151,13 @@ module.exports =
         methods.push(hmethod)
     work.headersMethods = methods
   ######################################################################
-  #	Find both name and methods form the headers
+  # Find both name and methods form the headers
   ######################################################################
   readHeadersFile: (work) ->
     @findClassName(work)
     @findAllHeaderMethods(work)
   ######################################################################
-  #	Return a promise toward a new .cpp file open
+  # Return a promise toward a new .cpp file open
   ######################################################################
   openFile: (work,type) ->
     if (type == @IMPLEMENTATION)
@@ -189,7 +189,7 @@ module.exports =
     work.editor.insertText( "*".repeat(68)+ "*/")
     work.editor.insertNewline()
   ######################################################################
-  #	Write the method name
+  # Write the method name
   ######################################################################
   methodName: (work,method) ->
     if (method[0])
@@ -200,7 +200,7 @@ module.exports =
       work.editor.insertText("#{work.classname}::#{method[1]}")
     work.editor.insertNewline()
   ######################################################################
-  #	Write the body of the implementation of a method
+  # Write the body of the implementation of a method
   ######################################################################
   methodBody: (work) ->
     work.editor.insertText("{")
@@ -208,21 +208,21 @@ module.exports =
     work.editor.moveDown(1)
     work.editor.insertNewline()
   ######################################################################
-  #	Add a method at the cursor position
+  # Add a method at the cursor position
   ######################################################################
   writeMethod: (work,method) ->
     @methodComment(work)
     @methodName(work,method)
     @methodBody(work)
   ######################################################################
-  #	Create all the methods back to back
+  # Create all the methods back to back
   ######################################################################
   writeAllMethods: (work) ->
     ctx = this
     work.headersMethods.forEach (method) ->
       ctx.writeMethod(work,method,ctx)
   ######################################################################
-  #	Write the whole file .cpp
+  # Write the whole file .cpp
   ######################################################################
   writeNewCpp: (work) ->
     @createHeadOfCpp(work)
@@ -240,7 +240,7 @@ module.exports =
     else
       work.editor.moveToBottom()
   ######################################################################
-  #	generate a work object
+  # generate a work object
   ######################################################################
   generateWork: ->
     editor = atom.workspace.getActiveTextEditor()
@@ -261,7 +261,7 @@ module.exports =
     work.editor = editor
     work.buffer = work.editor.getBuffer()
   ######################################################################
-  #	Return the range of the line in buffer coord
+  # Return the range of the line in buffer coord
   ######################################################################
   lineRange: (work) ->
     position = work.editor.getCursorScreenPosition()
@@ -271,7 +271,7 @@ module.exports =
     work.editor.setCursorScreenPosition(position)
     return range
   ######################################################################
-  #	Read the header files you are in and generate a .cpp
+  # Read the header files you are in and generate a .cpp
   # in the same path
   ######################################################################
   generate: ->
