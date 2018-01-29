@@ -64,14 +64,14 @@ module.exports =
     path = work.editor.getPath()
     work.headerPath = ""
     work.implementationPath = ""
-    if path.match(/\.h$/)
+    if path?.match(/.+\.h$/)
       work.headerPath = path
       fileName = work.editor.getTitle().replace(".h",".cpp")
-    else if path.match(/\.cpp$/)
+    else if path?.match(/.+\.cpp$/)
       work.implementationPath = path
       fileName = work.editor.getTitle().replace(".cpp",".h")
     else
-      return
+      return Promise.reject()
     return atom.workspace.scan @FILE_NAME_PATTERN, (file) ->
       if (file.filePath.includes(fileName))
         if work.headerPath == ""
@@ -279,6 +279,9 @@ module.exports =
     work.editor.save()
     @readHeadersFile(work)
     work.headerPath = work.editor.getPath()
+    if !work.headerPath.match(/.+\.h$/)
+      atom.notifications.addError('Active edtior must be a header file (.h) to generate the implementation (.cpp)')
+      return
     work.implementationPath = work.headerPath.replace(".h",".cpp")
     ctx = this
     @openFile(work, @IMPLEMENTATION).then (editor) ->
@@ -291,16 +294,19 @@ module.exports =
     work.editor.save
     @findClassName(work)
     ctx = this
-    @findPath(work).then ->
-      range = ctx.lineRange(work)
-      console.log(range)
-      ctx.findMethodInRange(work,range)
-      unless work.headersMethods.length
-        return
-      ctx.openFile(work, ctx.IMPLEMENTATION).then (editor) ->
-        ctx.changeEditor(work,editor)
-        ctx.moveCursorToAppend(work)
-        ctx.writeMethod(work,work.headersMethods[0])
+    @findPath(work).then(->
+        range = ctx.lineRange(work)
+        console.log(range)
+        ctx.findMethodInRange(work,range)
+        unless work.headersMethods.length
+          return
+          ctx.openFile(work, ctx.IMPLEMENTATION).then (editor) ->
+            ctx.changeEditor(work,editor)
+            ctx.moveCursorToAppend(work)
+            ctx.writeMethod(work,work.headersMethods[0])
+      ,
+      -> atom.notifications.addError('Active editor is not in a .cpp nor .h file')
+      )
     return
 
   update: ->
@@ -308,11 +314,14 @@ module.exports =
     work.editor.save
     ctx = this
     @readHeadersFile(work)
-    @findPath(work).then ->
-      ctx.openFile(work,ctx.IMPLEMENTATION).then (editor) ->
-        ctx.changeEditor(work,editor)
-        ctx.findAllCppMethods(work)
-        ctx.compareMethods(work)
-        ctx.moveCursorToAppend(work)
-        ctx.writeAllMethods(work)
+    @findPath(work).then(->
+        ctx.openFile(work,ctx.IMPLEMENTATION).then (editor) ->
+          ctx.changeEditor(work,editor)
+          ctx.findAllCppMethods(work)
+          ctx.compareMethods(work)
+          ctx.moveCursorToAppend(work)
+          ctx.writeAllMethods(work)
+      ,
+      -> atom.notifications.addError('Active editor is not in a .cpp nor .h file')
+      )
     return
